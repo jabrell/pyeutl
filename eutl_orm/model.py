@@ -4,9 +4,22 @@ from sqlalchemy import (Integer, Float, Column, String, ForeignKey, Boolean, Dat
                         BigInteger)
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, backref
+import pandas as pd 
+import numpy as np
 
 Base = declarative_base()
 
+
+def format_address(x):
+    """format address of given object"""
+    res = ""
+    if x.addressMain: res += x.addressMain + "\n"
+    if x.addressSecondary: res += x.addressSecondary + "\n"
+    if x.postalCode: res += x.postalCode + " " + x.city + "\n"
+    if x.country_id: res += x.country.description
+    if res.endswith("\n"):
+        res = res[:-1]
+    return res
 
 class Transaction(Base):
     """ Transaction blocks """
@@ -30,11 +43,36 @@ class Transaction(Base):
     acquiringAccount = relationship("Account", 
                                     foreign_keys=[acquiringAccount_id], 
                                     backref="acquiringTransactions")
-    unitType = relationship("UnitType", backref="transqactions")
+    unitType = relationship("UnitType", backref="transactions")
     project = relationship("OffsetProject", backref="transactions")
     transactionTypeMain = relationship("TransactionTypeMain", backref="transactions",)
     transactionTypeSupplementary = relationship("TransactionTypeSupplementary", 
                                                 backref="transactions")
+
+    def to_dict(self):
+        res = {k: v for k,v in self.__dict__.items() if k not in ['_sa_instance_state', 
+                                                                  "transferringAccount", "acquiringAccount",
+                                                                  "unitType", "project", "transactionTypeMain",
+                                                                  "transactionTypeSupplementary"]}
+        if self.unitType_id:
+            res["unitType"] = self.unitType.description 
+        if self.transactionTypeMain_id:
+            res["transactionTypeMain"] = self.transactionTypeMain.description  
+        if self.transactionTypeSupplementary_id:
+            res["transactionTypeSupplementary"] = self.transactionTypeSupplementary.description 
+        if self.acquiringAccount_id:
+            res["acquiringAccountName"] = self.acquiringAccount.name 
+            if self.acquiringAccount.accountType:
+                res["acquiringAccountType"] = self.acquiringAccount.accountType.description
+            else:
+                res["transferringAccountType"] = None
+        if self.transferringAccount_id:
+            res["transferringAccountName"] = self.transferringAccount.name 
+            if self.transferringAccount.accountType:
+                res["transferringAccountType"] = self.transferringAccount.accountType.description
+            else:
+                res["transferringAccountType"] = None
+        return res            
 
     def __repr__(self):
         return "<Transaction(%r, %r, %r, %r, %r)>" % (
@@ -60,12 +98,44 @@ class Account(Base):
 
     # relations
     accountType = relationship("AccountType", backref="accounts")
-    registry = relationship("CountryCode", backref="accounts")
+    registry = relationship("Country", backref="accounts")
     installation = relationship("Installation", backref="accounts")
     accountHolder = relationship("AccountHolder", backref="accounts")
 
     # transferringTransactions --> all transactions with account as transferring side
     # acquiringTransactions --> all transactions with account as acquiring side
+    #TODO implement transactions (i.e. both sides )
+    @property
+    def transactions(self):
+        if self.transferringTransactions:
+            res = [i for i in list(self.transferringTransactions)]
+            res.extend(list(self.acquiringTransactions))
+            return res
+        else:
+            return list(self.acquiringTransactions)
+    
+    def get_transactions(self):
+        lst_df = []
+        if self.transferringTransactions:
+            df = pd.DataFrame([i.to_dict() for i in list(self.transferringTransactions)])
+            df["direction"] = -1
+            lst_df.append(df)
+        if self.acquiringTransactions:
+            df = pd.DataFrame([i.to_dict() for i in list(self.acquiringTransactions)])
+            df["direction"] = 1
+            lst_df.append(df)
+        if len(lst_df) > 0:
+            df = pd.concat(lst_df)  
+            df["amount_directed"] = df["amount"]*df["direction"] 
+            return df.set_index("date").sort_index()         
+        return 
+
+    
+    def to_dict(self):
+        res = {k: v for k,v in self.__dict__.items() if k not in ['_sa_instance_state']}
+        if  self.accountType_id:
+            res["accountType"] = self.accountType.description            
+        return res
 
     def __repr__(self):
         return "<Account(%r, %r, %r, %r)>" % (self.id, self.name, self.registry_id, self.accountType_id)
@@ -82,10 +152,15 @@ class AccountHolder(Base):
     country_id = Column(String(300), ForeignKey("country_code.id"), index=True)
 
     # relations
-    country = relationship("CountryCode", backref="accountHolders")
+    country = relationship("Country", backref="accountHolders")
 
     # accounts ==> all account related to AccountHolder
-
+    def to_dict(self):
+        res = {k: v for k,v in self.__dict__.items() if k not in ['_sa_instance_state']}
+        if  self.country_id:
+            res["country"] = self.country.description            
+        return res
+    
     def __repr__(self):
         return "<AccountHolder(%r, %r, %r)>" % (self.id, self.name, self.country_id)
 
@@ -126,19 +201,31 @@ class Installation(Base):
     entitlement = Column(Integer())
 
     # relationships
-    registry = relationship("CountryCode", 
-                            backref="installations_in_registry", 
+    registry = relationship("Country", 
+                            back_populates="installations_in_registry",
                             foreign_keys=[registry_id])
-    country = relationship("CountryCode", 
-                        backref="installations_in_country", 
-                        foreign_keys=[country_id])
+    country = relationship("Country", 
+                            back_populates="installations_in_country", 
+                            foreign_keys=[country_id])
     activityType = relationship("ActivityType", backref="installations")
     compliance = relationship("Compliance", backref="installation")
     surrendering = relationship("Surrender", backref="installation")
     nace = relationship("NaceCode", backref="installations")
-
     # accounts ==> all operator accounts related to installations
+    
+    @property
+    def address(self):
+        return format_address(self)
+    
+    def get_compliance(self):
+        """Returns compliance data as dataframe"""
+        return pd.DataFrame([c.to_dict() for c in self.compliance])\
+                    .replace('None', np.nan)
 
+    def get_surrendering(self):
+        return pd.DataFrame([s.to_dict() for s in self.surrendering])\
+                    .replace('None', np.nan)       
+    
     def __repr__(self):
         return "<Installation(%r, %r, %r)>" % (self.id, self.name, self.registry)
 
@@ -164,6 +251,13 @@ class Compliance(Base):
     # relations
     compliance = relationship("ComplianceCode", backref="compliances")
     # installation ==> related installation
+    
+    def to_dict(self):
+        res =  {k: v for k,v in self.__dict__.items() if k not in ['_sa_instance_state']}
+        if self.compliance:
+            res["compliance"] = self.compliance.description
+        return res
+
 
     def __repr__(self):
         return "<Compliance(%r, %r): allocated: %r, surrendered: %r, verified: %r>" % (self.installation_id, self.year,
@@ -184,9 +278,17 @@ class Surrender(Base):
 
     # relations
     unitType = relationship("UnitType", backref="surrendering")
-    originatingCountry = relationship("CountryCode", backref="surrendering")
+    originatingCountry = relationship("Country", backref="surrendering")
     project = relationship("OffsetProject", backref="surrendering")
-    # installation ==> related installation    
+    # installation ==> related installation  
+    
+    def to_dict(self):
+        res = {k: v for k,v in self.__dict__.items() if k not in ['_sa_instance_state', "id"]}
+        if self.unitType:
+            res["unitType"] = self.unitType.description
+        else:
+            res["unitType"] = None
+        return res
 
     def __repr__(self):
         return "<Surrendering(%r, %r)>" % (self.installation_id, self.year)
@@ -200,7 +302,7 @@ class OffsetProject(Base):
     country_id = Column(String(10), ForeignKey("country_code.id"))
 
     # relations
-    country = relationship("CountryCode", backref="offsetProjects")
+    country = relationship("Country", backref="offsetProjects")
     # transactions ===> related transactions
     # surrendering ==> usage in surrendering data
 
@@ -274,18 +376,27 @@ class UnitType(Base):
         return "<UnitType(%r, %r)>" % (self.id, self.description)
 
 
-class CountryCode(Base):
+class Country(Base):
     """Lookup table for countries"""
     __tablename__ = "country_code"
 
     id = Column(String(10), primary_key=True)
     description = Column(String(250), nullable=False)
 
-    def __repr__(self):
-        return "<CountryCode(%r, %r)>" % (self.id, self.description)
+    installations_in_registry = relationship(Installation,
+                                             back_populates="registry",
+                                             lazy="dynamic",
+                                             foreign_keys=[Installation.registry_id]
+                                             )
     
-    # installations_in_country ==> installations located in the country
-    # installations_in_registry ==> installations registered in the country
+    installations_in_country = relationship(Installation,
+                                             back_populates="country",
+                                             lazy="dynamic",
+                                             foreign_keys=[Installation.country_id]
+                                             )    
+    def __repr__(self):
+        return "<Country(%r, %r)>" % (self.id, self.description)
+    
     # surrendering ==> surrendering of permit originating in the country
     # offsetProject ==> offset project taking place in the country
     # accounts ==> accounts registered in the country

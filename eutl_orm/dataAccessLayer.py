@@ -9,7 +9,7 @@ import csv
 import pandas as pd 
 from zipfile import ZipFile
 from eutl_orm.model import (TransactionTypeMain, TransactionTypeSupplementary,
-                            CountryCode, ComplianceCode, UnitType, AccountType,
+                            Country, ComplianceCode, UnitType, AccountType,
                             ActivityType, NaceCode, OffsetProject, Installation,
                             Compliance, Surrender)
 class DataAccessLayer:
@@ -240,7 +240,7 @@ class DataAccessLayer:
             print("---- Insert lookup tables")
             self.insert_df(pd.read_csv(fzip.open("nace_code.csv")).sort_values("level"), NaceCode)
             self.insert_df(pd.read_csv(fzip.open("compliance_code.csv")), ComplianceCode)
-            self.insert_df(pd.read_csv(fzip.open("country_code.csv"), keep_default_na=False), CountryCode)
+            self.insert_df(pd.read_csv(fzip.open("country_code.csv"), keep_default_na=False), Country)
             self.insert_df(pd.read_csv(fzip.open("unit_type.csv")), UnitType)
             self.insert_df(pd.read_csv(fzip.open("activity_type.csv")), ActivityType)
             self.insert_df(pd.read_csv(fzip.open("account_type.csv")), AccountType)
