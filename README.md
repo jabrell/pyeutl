@@ -3,7 +3,7 @@ The European Transaction Log (EUTL) is the backbone of the European Union Emissi
 It implements the transfer of emission allowances between parties active in the EUETS. The EUTL provides data on regulated 
 installations, their emissions as well as transfers of allowances. Provided data 
 extracted from the EUTL website this module provides a simple Object Relational Mapper (ORM) allowing easy access to the data. 
-The data can be downloaded on <a href="euets.info">EUETS.INFO</a>.
+The data can be downloaded on <a href="https://euets.info">EUETS.INFO</a>.
 
 This package is currently under development and backward compatibility is therefore not granted. 
 
