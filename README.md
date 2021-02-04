@@ -14,6 +14,6 @@ Clone the repository and follow the steps given the in the different notebooks. 
 # Get started
 Documentation is currently provided in a series of jupyter notebooks.
 
-1. 1_create_database.ipynb shows how to create the database provided the zip-file containing data extracted from EUETS.INFO.
+1. 1_create_database.ipynb shows how to create the database provided the zip-file containing data extracted from <a href="https://euets.info">EUETS.INFO</a>.
 2. 2_installations.ipynb shows how to analyze compliance and transaction behavior of an installation and associated accounts.
 
