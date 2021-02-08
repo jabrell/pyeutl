@@ -6,6 +6,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, backref
 import pandas as pd 
 import numpy as np
+from .mappings import map_nace, map_activities
 
 Base = declarative_base()
 
@@ -104,9 +105,9 @@ class Account(Base):
 
     # transferringTransactions --> all transactions with account as transferring side
     # acquiringTransactions --> all transactions with account as acquiring side
-    #TODO implement transactions (i.e. both sides )
     @property
     def transactions(self):
+        """ all tranactions, i.e., transferring and acquiring """
         if self.transferringTransactions:
             res = [i for i in list(self.transferringTransactions)]
             res.extend(list(self.acquiringTransactions))
@@ -129,8 +130,7 @@ class Account(Base):
             df["amount_directed"] = df["amount"]*df["direction"] 
             return df.set_index("date").sort_index()         
         return 
-
-    
+  
     def to_dict(self):
         res = {k: v for k,v in self.__dict__.items() if k not in ['_sa_instance_state']}
         if  self.accountType_id:
@@ -217,6 +217,14 @@ class Installation(Base):
     def address(self):
         return format_address(self)
     
+    @property
+    def nace_category(self):
+        return map_nace.get(self.nace_id) 
+    
+    @property
+    def activity_category(self):
+        return map_activities.get(self.activity_id)     
+        
     def get_compliance(self):
         """Returns compliance data as dataframe"""
         return pd.DataFrame([c.to_dict() for c in self.compliance])\
@@ -225,6 +233,20 @@ class Installation(Base):
     def get_surrendering(self):
         return pd.DataFrame([s.to_dict() for s in self.surrendering])\
                     .replace('None', np.nan)       
+    
+    def to_dict(self):
+        res = {k: v for k,v in self.__dict__.items() if k not in ['_sa_instance_state', ]}
+        if  self.activity_id:
+            res["activity"] = self.activityType.description      
+            res["activity_category"] = map_activities.get(self.activity_id, np.nan)
+        if  self.nace_id:
+            res["nace"] = self.nace.description 
+            res["nace_category"] = map_nace.get(self.nace_id, np.nan) 
+        if  self.registry_id:
+            res["registry"] = self.registry.description
+        if  self.country_id:
+            res["country"] = self.country.description                             
+        return res          
     
     def __repr__(self):
         return "<Installation(%r, %r, %r)>" % (self.id, self.name, self.registry)
@@ -394,9 +416,68 @@ class Country(Base):
                                              lazy="dynamic",
                                              foreign_keys=[Installation.country_id]
                                              )    
+    
+    @property
+    def name(self):
+        return self.description
+    
+    def _filter_installations(self, filter={}, origin="registry"):
+        """Filter installation list 
+        :param filter: <dict: attribute -> list> to filter based on installation attributes
+        :param origin: <string> registries for installations in registry, 
+                                country for installations located in the country
+        return: <sqlalchemy.orm.dynamic.AppenderQuery>"""
+        # get installations
+        if origin == "registry":
+            inst = self.installations_in_registry
+        elif origin == "country":
+            inst = self.installations_in_country
+        else:
+            raise ValueError("Invalid installations origin. Has to be either 'registry' or 'country'")
+        # filter installations
+        for k,v in filter.items():
+            try:
+                inst = inst.filter(getattr(Installation, k).in_(v))
+            except AttributeError as e:
+                raise AttributeError("Error in filter: %s" % str(e))        
+        return inst
+        
+    def get_compliance(self, filter={}, origin="registry"):
+        """ Get compliance data of registry
+        :param filter: <dict: attribute -> list> to filter based on installation attributes
+        :param origin: <string> registries for installations in registry, 
+                                country for installations located in the country        
+        """
+        qry = self._filter_installations(filter, origin)
+        qry = qry.join(ActivityType, isouter=True)\
+                    .join(NaceCode, isouter=True)\
+                    .join(Compliance, isouter=True)
+        qry = qry.with_entities(
+            Installation.id.label("installation_id"), Installation.name.label("installation_name"), 
+            ActivityType.id.label("activity_id"), ActivityType.description.label("activity"),
+            NaceCode.id.label("nace_id"), NaceCode.description.label("nace"),
+            Compliance.year, Compliance.surrendered, Compliance.verified,
+            Compliance.allocatedTotal, Compliance.allocatedFree, 
+            Compliance.allocated10c, Compliance.allocatedNewEntrance)
+        df = pd.read_sql(qry.statement, qry.session.bind)
+        df["nace_category"] = df.nace_id.map(lambda x: map_nace.get(x, "not provided"))
+        df["activity_category"] = df.activity_id.map(lambda x: map_activities.get(x, "not provided"))
+        return df
+    
+    def get_installations(self, filter={}, origin="registry"):
+        """Return pandas dataframe with installations
+        :param filter: <dict: attribute -> list> to filter based on installation attributes
+        :param origin: <string> registries for installations in registry, 
+                                country for installations located in the country
+        :return: <pd.DataFrame>"""
+        inst = self._filter_installations(filter, origin)
+        return pd.DataFrame([c.to_dict() for c in inst])\
+                        .replace('None', np.nan)
+    
     def __repr__(self):
         return "<Country(%r, %r)>" % (self.id, self.description)
     
+    # installations_in_registry ==> installations registered in the country
     # surrendering ==> surrendering of permit originating in the country
     # offsetProject ==> offset project taking place in the country
     # accounts ==> accounts registered in the country
