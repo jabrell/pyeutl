@@ -1,6 +1,8 @@
+/attic/connection_settings.py
+/data/eutl.zip
+
 .vscode
 ._old
-eutl.zip
 3_Registry.ipynb
 
 
@@ -133,3 +135,4 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
