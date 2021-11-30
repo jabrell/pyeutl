@@ -7,13 +7,77 @@ The data can be downloaded on <a href="https://euets.info">EUETS.INFO</a>.
 
 This package is currently under development and backward compatibility is therefore not granted. 
 
-# Installation 
+## Installation 
 
-Clone the repository and follow the steps given the in the different notebooks. Requirements.txt provides dependencies.
+The installation steps below have been written for **Linux/Ubuntu**. All file paths are relative to
+the repository root directory.
 
-# Get started
-Documentation is currently provided in a series of jupyter notebooks.
+Clone the repository onto your local system: 
 
-1. 1_create_database.ipynb shows how to create the database provided the zip-file containing data extracted from <a href="https://euets.info">EUETS.INFO</a>.
-2. 2_installations.ipynb shows how to analyze compliance and transaction behavior of an installation and associated accounts.
+`git clone https://github.com/RikerlWien/eutl_orm.git path/to/local/directory`
 
+### PostgreSQL setup
+
+The ORM relies on a PostgreSQL database. For that, you need to download and install PostgreSQL, for example as explained [here](https://www.tecmint.com/install-postgresql-and-pgadmin-in-ubuntu/).
+
+```bash
+# install PostgreSQL
+$ sudo apt update
+$ sudo apt install postgresql
+
+# check status of PostgreSQL service
+$ sudo systemctl is-active postgresql
+$ sudo systemctl is-enabled postgresql
+$ sudo systemctl status postgresql
+$ sudo pg_isready
+```
+
+You need to create a user role and an empty database in which the ETS data will be stored. For that, you can use the command-line-based PostgreSQL database shell `psql`
+
+```bash
+$ sudo su - postgres
+$ psql
+
+# create user 
+postgres=# CREATE USER eutl_admin WITH PASSWORD '1234';
+
+# list roles (=users)
+postgres=# \du
+
+# create database
+postgres=# CREATE DATABASE eutl_db OWNER eutl_admin;
+
+List databases: 
+postgres=# \l
+
+# grant privileges on database to user
+postgres=# GRANT ALL PRIVILEGES ON DATABASE eutl_db to eutl_admin;
+
+# quit psql
+postgres=# \q
+```
+
+You can chose whatever database, user name and password you like, but you must make sure you use them to access the database.
+
+For that, create a python file `attic/connection_settings.py` with following content (adapt if you chose a different user name, database name or password):
+
+````python
+connectionSettings = dict(
+    user="eutl_admin",
+    host="localhost",
+    db="eutl_db",
+    passw="1234",
+    port=5432
+)
+````
+
+### Data
+
+For now, the local database is empty. We will populate it with data retrieved from https://www.euets.info/.
+Download the zip file from https://www.euets.info/static//download/eutl.zip and save it
+in `data/eutl.zip`
+
+### Set up the database
+
+To set up the database, run the python script `scripts/setup_db.py`. The process typically takes up
+to 10 minutes.
