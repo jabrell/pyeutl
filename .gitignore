@@ -1,5 +1,6 @@
 /attic/connection_settings.py
 /data/eutl.zip
+.idea/
 
 .vscode
 ._old
@@ -136,3 +137,4 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+plots/*
