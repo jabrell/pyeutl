@@ -4,3 +4,4 @@ import pathlib
 project_root = pathlib.Path(__file__).parent.parent
 
 path_data = project_root / "data/"
+path_plots = project_root / "plots/"

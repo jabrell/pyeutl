@@ -1,0 +1,15 @@
+acquiringAccount_id;transferringAccount_id;amount;acquiringAccount_type;transferringAccount_type;acquiringAccount_name;transferringAccount_name
+178;494;399180;b;a;name_178;name_494
+494;11;3880455;a;b;name_494;name_11
+494;223;235000;a;b;name_494;name_223
+494;673;40000;a;c;name_494;name_673
+494;698;1356582;a;c;name_494;name_698
+494;5025;230000;a;c;name_494;name_5025
+494;15486;10183831;a;c;name_494;name_15486
+494;41288;140902;a;d;name_494;name_41288
+671;494;716;d;a;name_671;name_494
+672;494;334;d;a;name_672;name_494
+673;494;52102;d;a;name_673;name_494
+698;494;200000;c;a;name_698;name_494
+15478;494;16113833;d;a;name_15478;name_494
+41289;494;140902;d;a;name_41289;name_494
