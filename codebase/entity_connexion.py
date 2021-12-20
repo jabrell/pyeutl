@@ -92,12 +92,23 @@ class EntityConnexion:
 
     def plot_arrows(self):
 
+        # todo: add selected dates on graph
+
         if self.transactions is None:
             return
 
         df = self.transactions
         this_node = self.entity_id
 
+        # Sometimes there are missing values in the transaction dataframe
+        for val in {'transferring', 'acquiring'}:
+            if df[f'{val}Entity_id'].isnull().any():
+                warnings.warn(f'  Some {val}Entity IDs missing ... replacing')
+                fillval = {'transferringEntity_id': -1,
+                           'transferringEntity_name': 'unknown', 'transferringEntity_type': 'unknown'}
+                df.fillna(value=fillval, inplace=True)
+
+        # Make graph from transactions dataframe
         transaction_graph = nx.from_pandas_edgelist(df, source='transferringEntity_id', target='acquiringEntity_id',
                                     edge_attr='amount', create_using=nx.DiGraph())
         if len(transaction_graph) > 40:  # if too many nodes, no point in plotting
