@@ -50,7 +50,7 @@ class DataAccessLayer:
         if self.engine is None:
             self.engine = create_engine(self.conn_string, echo=self.echo, encoding=self.encoding)
             self.Base.metadata.create_all(self.engine)
-            self.metadata = MetaData(bind=self.engine, reflect=True)
+            self.metadata = MetaData(bind=self.engine)
             self.Session = sessionmaker(bind=self.engine)
             self.session = self.Session()
 
