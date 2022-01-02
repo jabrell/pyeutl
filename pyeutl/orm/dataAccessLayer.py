@@ -8,7 +8,7 @@ from io import StringIO
 import csv
 import pandas as pd 
 from zipfile import ZipFile
-from eutl_orm.model import (TransactionTypeMain, TransactionTypeSupplementary,
+from .model import (TransactionTypeMain, TransactionTypeSupplementary,
                             Country, ComplianceCode, UnitType, AccountType,
                             ActivityType, NaceCode, OffsetProject, Installation,
                             Compliance, Surrender)
