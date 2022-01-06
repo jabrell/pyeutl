@@ -34,6 +34,35 @@ def get_installations(fn_zip,
     return df
 
 
+def get_compliance(fn_zip, df_installation=None, create_id=True, 
+                   drop=["surrenderedCummulative", "surrenderedCummulative","created_on", "updated_on"]):
+    """Load compliance data from zip and add labels and installation information
+    :param fn_zip: <string> name of zip file with data
+    :parma create_id: <boolean> True to create a column with a unique if combining installation
+              id and year of compliance
+    :param df_installations: <pd.DataFrame> with installation information to be included 
+              index column has to be named "id"
+    :param drop: <list: string> with column names to drop
+    :return: <pd.DataFrame>"""
+    df = load_zipped_file(fn_zip, "compliance.csv") 
+    cols = [c for c in df.columns if c not in drop]
+    df = df[cols].copy()
+    # get compliance codes
+    mapper = get_mapper(fn_zip, "compliance_code.csv")
+    df = map_if_exists(df, mapper, "compliance_id", "complianceCode")
+    # order of columns
+    # create an unique id
+    if create_id: 
+        df["id"] = df.installation_id + "_" + df.year.map(str)
+        df = df[["id"] + list(df.columns[:-1])]
+    # add installation informations
+    if df_installation is not None:
+        df_installation = df_installation.rename(columns={"id": "installation_id"})
+        df = df.merge(df_installation, on="installation_id", how="left")
+        
+    return df
+
+
 def get_accounts(fn_zip, drop=["created_on", "updated_on"],
                 df_installation=None, prefix_installation="installation"):
     """Load and aggregate account data from zip and add labels
