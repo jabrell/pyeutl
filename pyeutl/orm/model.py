@@ -22,6 +22,7 @@ def format_address(x):
         res = res[:-1]
     return res
 
+
 class Transaction(Base):
     """ Transaction blocks """
     __tablename__ = "transaction"
@@ -85,6 +86,8 @@ class Account(Base):
     __tablename__ = "account"
 
     id = Column(Integer(), primary_key=True)
+    accountIDEutl = Column(Integer)
+    accountIDtransactions = Column(String(100))
     name = Column(String(250))
     registry_id = Column(String(10), ForeignKey("country_code.id"), index=True)
     accountHolder_id = Column(Integer(), ForeignKey("account_holder.id"), index=True)
@@ -96,6 +99,8 @@ class Account(Base):
     companyRegistrationNumber = Column(String(250))
     isRegisteredEutl = Column(Boolean(), default=True)
     installation_id = Column(String(100), ForeignKey("installation.id"), index=True)
+    created_on = Column(DateTime(), default=datetime.now)
+    updated_on = Column(DateTime(), default=datetime.now, onupdate=datetime.now)
 
     # relations
     accountType = relationship("AccountType", backref="accounts")
@@ -149,7 +154,13 @@ class AccountHolder(Base):
     addressSecondary = Column(String(300))
     postalCode = Column(String(300))
     city = Column(String(300))
+    telephone1 = Column(String(300))
+    telephone2 = Column(String(300))
+    eMail = Column(String(300))
+    legalEntityIdentifier = Column(String(300))
     country_id = Column(String(300), ForeignKey("country_code.id"), index=True)
+    created_on = Column(DateTime(), default=datetime.now)
+    updated_on = Column(DateTime(), default=datetime.now, onupdate=datetime.now)
 
     # relations
     country = relationship("Country", backref="accountHolders")
@@ -176,7 +187,7 @@ class Installation(Base):
 						 nullable=False, index=True)
     eprtrID = Column(String(200))
     parentCompany = Column(String(250))
-    subsidiaryCompany = Column(String(250))
+    subsidiaryCompany = Column(String(1000))
     permitID = Column(String(250))
     designatorICAO = Column(String(250))
     monitoringID = Column(String(250))
@@ -198,7 +209,8 @@ class Installation(Base):
     nace15_id = Column(String(10))
     nace20_id = Column(String(10))
     nace_id = Column(String(10), ForeignKey("nace_code.id"), index=True)
-    entitlement = Column(Integer())
+    euEntitlement = Column(Integer())
+    chEntitlement = Column(Integer())
 
     # relationships
     registry = relationship("Country", 
@@ -258,6 +270,7 @@ class Compliance(Base):
 
     installation_id = Column(String(100), ForeignKey("installation.id"), primary_key=True)
     year = Column(Integer(), primary_key=True)
+    reportedInSystem=Column(String(10), primary_key=True)    
     euetsPhase = Column(String(100))
     compliance_id = Column(String(100), ForeignKey("compliance_code.id"))
     allocatedFree = Column(Integer())
@@ -292,6 +305,7 @@ class Surrender(Base):
     __tablename__ = "surrender"
     id = Column(Integer, primary_key=True)
     installation_id = Column(String(100), ForeignKey("installation.id"), index=True)
+    reportedInSystem=Column(String(10), primary_key=True)    
     year = Column(Integer(), index=True)
     unitType_id = Column(String(25), ForeignKey("unit_type.id"), index=True)
     amount = Column(Integer())

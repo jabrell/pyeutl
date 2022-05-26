@@ -95,7 +95,7 @@ def get_accounts(fn_zip, drop=["created_on", "updated_on"],
     return df
 
 
-def get_transactions(fn_zip, drop=[], freq="D",
+def get_transactions(fn_zip, drop=[], freq=None,
                     df_account=None,
                     prefix_account={"transferring": "transferring", "acquiring": "acquiring"}):
     """Load and aggregate transaction data from zip and add labels
@@ -110,8 +110,9 @@ def get_transactions(fn_zip, drop=[], freq="D",
     df = load_zipped_file(fn_zip, "transaction.csv", {"parse_dates": ["date"]})  
     cols = [c for c in df.columns if c not in drop]
     df = df[cols].copy()
-    groups = [pd.Grouper(key="date", freq=freq)] + [c for c in cols if c not in ["amount", "date"]]
-    df = df.groupby(groups).amount.sum().reset_index()
+    if freq is not None:
+        groups = [pd.Grouper(key="date", freq=freq)] + [c for c in cols if c not in ["amount", "date"]]
+        df = df.groupby(groups).amount.sum().reset_index()
     
     # get mappings for references and impose labels
     mapper = get_mapper(fn_zip, "transaction_type_main.csv")

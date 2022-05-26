@@ -256,7 +256,7 @@ class DataAccessLayer:
             df = pd.read_csv(fzip.open("installation.csv"), 
                             dtype={"nace15_id": "str", "nace20_id": "str","nace_id": "str"}
                             ).drop(["created_on", "updated_on"], axis=1)
-            self.insert_df_large(df, "installation", integerColumns=["entitlement"], if_exists="append")
+            self.insert_df_large(df, "installation", integerColumns=["euEntitlement", "chEntitlement"], if_exists="append")
             # Compliance
             print("---- Insert compliance data")
             df = pd.read_csv(fzip.open("compliance.csv")).drop(["created_on", "updated_on"], axis=1)
