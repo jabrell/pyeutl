@@ -64,7 +64,8 @@ def get_compliance(fn_zip, df_installation=None, create_id=True,
 
 
 def get_accounts(fn_zip, drop=["created_on", "updated_on"],
-                df_installation=None, prefix_installation="installation"):
+                df_installation=None, prefix_installation="installation",
+                df_accountHolder=None, prefix_accountHolder="accountHolder"):
     """Load and aggregate account data from zip and add labels
     :param fn_zip: <string> name of zip file with data
     :param drop: <list: string> with column names to drop
@@ -92,8 +93,13 @@ def get_accounts(fn_zip, drop=["created_on", "updated_on"],
         df_installation = df_installation.rename(columns=cols_rename) 
         df = df.merge(df_installation, left_on="installation_id", right_on="id", how="left",
                     suffixes=["", "_y"]).drop("id_y", axis=1)
+    if df_accountHolder is not None:
+            cols_rename = {c: prefix_accountHolder + c.capitalize()  
+                           for c in df_accountHolder.columns if c in df.columns and c != "id"}
+            df_accountHolder = df_accountHolder.rename(columns=cols_rename) 
+            df = df.merge(df_accountHolder, left_on="accountHolder_id", right_on="id", how="left",
+                        suffixes=["", "_y"]).drop("id_y", axis=1)        
     return df
-
 
 def get_transactions(fn_zip, drop=[], freq=None,
                     df_account=None,
@@ -131,4 +137,18 @@ def get_transactions(fn_zip, drop=[], freq=None,
     rename_cols["id"] = "acquiringAccount_id"
     df = df.merge(df_account.rename(columns=rename_cols), on="acquiringAccount_id", how="left")    
     
+    return df
+
+def get_account_holders(fn_zip, drop=["created_on", "updated_on", "telephone1", "telephone2", "eMail", "addressSecondary"],
+                df_installation=None, prefix_installation="installation"):
+    """Load account holder information from zip files
+    :param fn_zip: <string> name of zip file with data
+    :param drop: <list: string> with column names to drop
+    :return: <pd.DataFrame>"""
+    # get account holdes and drop columns 
+    df = load_zipped_file(fn_zip, "account_holder.csv")  
+    cols = [c for c in df.columns if c not in drop]
+    df = df.drop(drop, axis=1)    
+    mapper = get_mapper(fn_zip, "country_code.csv")
+    df = map_if_exists(df, mapper, "country_id", "country")
     return df
