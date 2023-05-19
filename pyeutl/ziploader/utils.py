@@ -1,6 +1,7 @@
 import pandas as pd
 from zipfile import ZipFile
 
+
 def load_zipped_file(fn_zip, fn_file, read_csv_args={}):
     """Load file in zip archiv
     :param fn_zip: <string> name of zip file
@@ -20,15 +21,15 @@ def get_mapper(fn_zip, fn_file, key="id", value="description"):
     :param: <dict: key -> value>
     """
     zip_file = ZipFile(fn_zip)
-    df = pd.read_csv(zip_file.open(fn_file))
-    return dict(zip(df[key],df[value]))
+    df = pd.read_csv(zip_file.open(fn_file), keep_default_na=False)
+    return dict(zip(df[key], df[value]))
 
 
 def map_if_exists(df, mapper, col, col_mapped, default=None, drop_col=False):
-    """ Applies mapper dictionary on values in col and creates new column 
+    """Applies mapper dictionary on values in col and creates new column
         with mapped values
-    param df: <pd.DataFrame> 
-    param mapper: <dict> with mapping imposed 
+    param df: <pd.DataFrame>
+    param mapper: <dict> with mapping imposed
     param col: <string> name of column for mapping
     param col_mapped: <string> name of column for mapping
     default: default value for mapping
@@ -40,4 +41,3 @@ def map_if_exists(df, mapper, col, col_mapped, default=None, drop_col=False):
     if drop_col:
         df = df.drop(col, axis=1)
     return df
-
