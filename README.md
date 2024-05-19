@@ -12,7 +12,8 @@ This package is currently under development and backward compatibility is theref
 
 # Installation 
 
-Clone the repository and follow the steps given the in the different notebooks. Requirements.txt provides dependencies.
+Clone the repository and follow the steps given the in the different notebooks. 
+Dependencies are managed using poetry.
 
 # Get started
 Documentation is currently provided in a series of jupyter notebooks.
