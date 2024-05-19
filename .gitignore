@@ -4,7 +4,8 @@ eutl*.zip
 3_Registry.ipynb
 jab_*
 eutl_account_full_list.xlsx
-
+poetry.lock
+*.png
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

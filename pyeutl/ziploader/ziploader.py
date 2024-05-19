@@ -173,7 +173,10 @@ def get_transactions(
                 transferring and acquiring accounts
     :return: <pd.DataFrame>"""
     # get transactions, drop columns and resample
-    df = load_zipped_file(fn_zip, "transaction.csv", {"parse_dates": ["date"]})
+    df = load_zipped_file(fn_zip, "transaction.csv").assign(
+        # cut out milli-seconds
+        date=lambda df: pd.to_datetime(df.date.str.split(".").str[0])
+    )
     cols = [c for c in df.columns if c not in drop]
     df = df[cols].copy()
     if freq is not None:

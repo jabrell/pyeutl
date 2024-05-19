@@ -97,23 +97,23 @@ class Transaction(Base):
         if self.transactionTypeMain_id:
             res["transactionTypeMain"] = self.transactionTypeMain.description
         if self.transactionTypeSupplementary_id:
-            res[
-                "transactionTypeSupplementary"
-            ] = self.transactionTypeSupplementary.description
+            res["transactionTypeSupplementary"] = (
+                self.transactionTypeSupplementary.description
+            )
         if self.acquiringAccount_id:
             res["acquiringAccountName"] = self.acquiringAccount.name
             if self.acquiringAccount.accountType:
-                res[
-                    "acquiringAccountType"
-                ] = self.acquiringAccount.accountType.description
+                res["acquiringAccountType"] = (
+                    self.acquiringAccount.accountType.description
+                )
             else:
                 res["transferringAccountType"] = None
         if self.transferringAccount_id:
             res["transferringAccountName"] = self.transferringAccount.name
             if self.transferringAccount.accountType:
-                res[
-                    "transferringAccountType"
-                ] = self.transferringAccount.accountType.description
+                res["transferringAccountType"] = (
+                    self.transferringAccount.accountType.description
+                )
             else:
                 res["transferringAccountType"] = None
         return res
@@ -292,6 +292,10 @@ class Installation(Base):
     surrendering = relationship("Surrender", backref="installation")
     nace = relationship("NaceCode", backref="installations")
     # accounts ==> all operator accounts related to installations
+
+    @property
+    def activity(self):
+        return self.activityType.description
 
     @property
     def address(self):

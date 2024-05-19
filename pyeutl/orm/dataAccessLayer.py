@@ -1,14 +1,19 @@
+import os
+import csv
+import logging
+from typing import Any
+from zipfile import ZipFile
 from getpass import getpass
+from io import StringIO
+import pandas as pd
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.inspection import inspect
-from .model import Base
 from sqlalchemy import create_engine, MetaData
 from sqlalchemy.orm import sessionmaker
-from io import StringIO
-import csv
-import pandas as pd
-from zipfile import ZipFile
+from sqlalchemy_utils import database_exists, create_database
+from pyeutl.utils import download_data
 from .model import (
+    Base,
     TransactionTypeMain,
     TransactionTypeSupplementary,
     Country,
@@ -18,39 +23,43 @@ from .model import (
     ActivityType,
     NaceCode,
     TradingSystemCode,
-    OffsetProject,
-    Installation,
-    Compliance,
-    Surrender,
 )
 
 
 class DataAccessLayer:
     """Class managing database access"""
 
+    @property
+    def session(self) -> Any:
+        """Get a database session"""
+        return self.Session()
+
     def __init__(
         self,
-        user,
-        host,
-        db,
-        passw,
-        port=5432,
-        echo=False,
-        encoding="utf-8",
-        connect=True,
-        base=None,
+        user: str,
+        host: str,
+        db: str,
+        passw: str,
+        port: int = 5432,
+        echo: bool | str = False,
+        encoding: str = "utf-8",
+        connect: bool = True,
+        base: Any | None = None,
     ):
         """Constructor for data access class.
         Default access is to local database
-        :param user: <string> user name
-        :param host: <string> host address
-        :param db: <string> database name
-        :parm port: <int> port of database
-        :param echo: <string, boolean> whther to echo sql statements, "debug" for verbose output
-        :param encoding: <string> database encoding
-        :param connect: <boolean> True to establish immediate connection to database
-                        default: True
-        :param base: <sqlalchemy.ext.declarative.declarative_base> Base class of ORM
+
+        Args:
+            user: <string> user name
+            host: <string> host address
+            db: <string> database name
+            port: <int> port of database
+            echo: <string, boolean> whether to echo sql statements,
+                "debug" for verbose output
+            encoding: <string> database encoding
+            connect: <boolean> True to establish immediate connection to database
+                default: True
+            base: <sqlalchemy.ext.declarative.declarative_base> Base class of ORM
         """
         self.engine = None
         self.user = user
@@ -58,7 +67,7 @@ class DataAccessLayer:
         self.db = db
         if (
             base is None
-        ):  # no custum declarative base, so use the one provided by eutl orm
+        ):  # no custom declarative base, so use the one provided by eutl orm
             self.Base = Base
         else:
             self.Base = base
@@ -79,19 +88,26 @@ class DataAccessLayer:
         """Connects to database"""
         if self.engine is None:
             self.engine = create_engine(
-                self.conn_string, echo=self.echo, encoding=self.encoding
+                self.conn_string, echo=self.echo, client_encoding=self.encoding
             )
+            if not database_exists(self.engine.url):
+                create_database(self.engine.url)
+                print(f"Created new database '{self.db}'")
             self.Base.metadata.create_all(self.engine)
-            self.metadata = MetaData(bind=self.engine)
+            self.metadata = MetaData()
             self.Session = sessionmaker(bind=self.engine)
-            self.session = self.Session()
+            # self.session = self.Session()
 
-    def empty_database(self, askConfirmation=True):
-        """Deletes all tables from database connectd by engine
-        askConfirmation: <boolean> true to ask for typed confirmation"""
-        self.metadata = MetaData(bind=self.engine)
-        self.metadata.reflect()
-        if len(self.engine.table_names()) > 0:
+    def empty_database(self, askConfirmation: bool = True):
+        """Deletes all tables from database connected by engine
+
+        Args:
+            askConfirmation: <boolean> true to ask for typed confirmation
+        """
+        self.metadata = MetaData()
+        self.metadata.reflect(bind=self.engine)
+        existing_tables = self.metadata.sorted_tables
+        if len(existing_tables) > 0:
             if askConfirmation:
                 confirm = getpass(
                     "Do really want to drop all tables? Enter Yes for confirmation: "
@@ -99,25 +115,32 @@ class DataAccessLayer:
             else:
                 confirm = "yes"
             if confirm.lower() == "yes":
-                for i, tbl in enumerate(reversed(self.metadata.sorted_tables)):
+                for i, tbl in enumerate(reversed(existing_tables)):
                     if tbl.name in ["spatial_ref_sys"]:
                         continue
                     print(i, tbl)
-                    tbl.drop()
+                    tbl.drop(bind=self.engine)
                 print("Tables deleted")
             else:
                 print("#### Tables still in database ####")
-        self.metadata.reflect()
+        self.metadata.reflect(bind=self.engine)
         self.Base.metadata.create_all(self.engine)
 
-    def insert_df(self, df, obj, update=False, bulk_insert=False, verbose=False):
+    def insert_df(
+        self,
+        df: pd.DataFrame,
+        obj: Any,
+        update: bool = False,
+        bulk_insert: bool = False,
+        verbose: bool = False,
+    ) -> None:
         """Inserts dataframe to database using session and ORM object.
         Dataframe has to have columns matching fields of the OMR objects
-        :param df: <pd.DataFrame> with data
-        :param obj: <ORM object>
-        :param update: <boolean> True to update existing rows
-        :param bulk_insert: <boolean> True for buli insert of intems
-        :parma verbose: <boolean> to print all keys not inserted
+            df: <pd.DataFrame> with data
+            obj: <ORM object>
+            update: <boolean> True to update existing rows
+            bulk_insert: <boolean> True for bulk insert of items
+            verbose: <boolean> to print all keys not inserted
         """
         printed = False
         # get primary key names
@@ -126,64 +149,72 @@ class DataAccessLayer:
         # replace Null values by None
         df_ = self._replace_null(df)
         to_add = []
-        for item in df_.to_dict(orient="records"):
-            # get primary key
-            pk = {k: v for k, v in item.items() if k in pk_names}
-            exists = False
-            try:
-                qry = self.session.query(obj).filter_by(**pk)
-                exists = qry.count() > 0
-            except ProgrammingError:
-                pass
-            if exists:  # with same key already in database
-                if update:
-                    qry.delete()
-                else:
-                    if verbose:
-                        print(
-                            f"Did not insert {pk} into table {obj.__tablename__}",
-                        )
+        with self.Session() as session:
+            for item in df_.to_dict(orient="records"):
+                # get primary key
+                pk = {k: v for k, v in item.items() if k in pk_names}
+                exists = False
+                try:
+                    qry = session.query(obj).filter_by(**pk)
+                    exists = qry.count() > 0
+                except ProgrammingError:
+                    pass
+                if exists:  # with same key already in database
+                    if update:
+                        qry.delete()
                     else:
-                        if not printed:
+                        if verbose:
                             print(
-                                f"Some entries not inserted into {obj.__tablename__} due to key duplication."
+                                f"Did not insert {pk} into table {obj.__tablename__}",
                             )
-                            printed = True
-                    continue
-            obj_to_insert = obj(**item)
+                        else:
+                            if not printed:
+                                print(
+                                    f"Some entries not inserted into {obj.__tablename__} due to key duplication."
+                                )
+                                printed = True
+                        continue
+                obj_to_insert = obj(**item)
+                if bulk_insert:
+                    to_add.append(obj_to_insert)
+                else:
+                    session.add(obj_to_insert)
             if bulk_insert:
-                to_add.append(obj_to_insert)
-            else:
-                self.session.add(obj_to_insert)
-        if bulk_insert:
-            self.session.add_all(to_add)
-        self.session.commit()
+                session.add_all(to_add)
+            session.commit()
+        return
 
     def insert_df_large(
         self,
-        df,
-        name,
-        integerColumns=None,
-        schema=None,
-        if_exists="fail",
-        index=False,
-        index_label=None,
-        chunksize=1000000,
-        dtype=None,
-    ):
+        df: pd.DataFrame,
+        name: str,
+        integerColumns: list[str] | None = None,
+        schema: str | None = None,
+        if_exists: str = "fail",
+        index: bool = False,
+        index_label: str | None = None,
+        chunksize: int = 1000000,
+        dtype: str | dict | None = None,
+    ) -> None:
         """Wrapper for pandas to_sql function using a more efficient insertion function.
         Likely only works under psycopg2 and postrgres
-        :parm df: <pd.DataFrame> to be inserted
-        :param name: <string> name if table
-        :param integerColumns: <list: string> name of columns to be inserted as int
-        :param schema: <string> pecify the schema (if database flavor supports this). If None, use default schema.
-        :param chunksize: <int> number of rows to be inserted at once. In contrast to pandas implementeation
-                    here we use explicit slicing of the dataframe.
-        :param if_exists: {"fail", "replace", "append"}, default "fail", How to behave if the table already exists.
-        :param index: <boolean> whetehr to also insert index
-        :param index_label: <string> Column label for index column(s)
-        :param dtype: <dict> or <scalar> Specifying the datatype for columns.
-                    If a dictionary is used, the keys should be the column names and the values should be the SQLAlchemy types or strings for the sqlite3 legacy mode.
+
+        Args:
+            df: <pd.DataFrame> to be inserted
+            name: <string> name if table
+            integerColumns: <list: string> name of columns to be inserted as int
+            schema: <string> specify the schema (if database flavor supports this).
+                If None, use default schema.
+            chunksize: <int> number of rows to be inserted at once. In contrast to pandas
+                    implementation here we use explicit slicing of the dataframe.
+            if_exists: {"fail", "replace", "append"}, default "fail".
+                How to behave if the table already exists.
+            index: <boolean> whether to also insert index
+            index_label: <string> Column label for index column(s)
+            dtype: <dict> or <scalar> Specifying the datatype for columns.
+                    If a dictionary is used, the keys should be the column names
+                    and the values should be the SQLAlchemy types or strings for
+                    the sqlite3 legacy mode.
                     If a scalar is provided, it will be applied to all columns.
         """
 
@@ -246,7 +277,7 @@ class DataAccessLayer:
             # insert data
             df_out.to_sql(
                 name=name,
-                con=self.session.get_bind(),
+                con=self.Session().get_bind(),
                 if_exists=if_exists,
                 schema=schema,
                 index=index,
@@ -254,9 +285,10 @@ class DataAccessLayer:
                 dtype=dtype,
                 method=psql_insert_copy,
             )
+        return
 
     @staticmethod
-    def _replace_null(df):
+    def _replace_null(df: pd.DataFrame) -> pd.DataFrame:
         """replaces nan and nat in dataframe by None values for database insertion"""
         df_ = df.copy()
         dt_cols = df_.select_dtypes(include=["datetime64"]).columns
@@ -266,12 +298,21 @@ class DataAccessLayer:
         return df_
 
     @staticmethod
-    def prepare_int_cols_for_sql_insert(df, int_cols):
-        """For fast insertion into the database using the csv IO stream we need interegers to be properly formated.
-        However, as long as we have Null values in the column, the column is of type float and integers are foramtted with
-        .0 at the end. Thus we cast these integers to string with correct format.
-        :param df: <pd.DataFrame>
-        :param int_cols: <list:string> names of columns to be converted
+    def _prepare_int_cols_for_sql_insert(
+        df: pd.DataFrame, int_cols: list[str]
+    ) -> pd.DataFrame:
+        """For fast insertion into the database using the csv IO stream we need
+            integers to be properly formatted.
+            However, as long as we have Null values in the column, the column is
+            of type float and integers are formatted with
+            .0 at the end. Thus we cast these integers to string with correct format.
+
+        Args:
+            df (pd.DataFrame): input dataframe
+            int_cols (list[str]): names of columns to be converted
+
+        Returns:
+            pd.DataFrame: dataframe with integer columns formatted
         """
 
         def int_to_string(x):
@@ -284,14 +325,24 @@ class DataAccessLayer:
             df[c] = df[c].map(int_to_string)
         return df
 
-    def create_database(self, fn_source, askConfirmation=True):
+    def create_database(
+        self, fn_source: str | None = None, askConfirmation: bool = True
+    ) -> None:
         """Create Postres-Eutl database based in zipped eutl csv datafiles.
         Note that data already in the database will be deleted.
-        :param fn_source: <string> path to sour zip-file containing eutl data
-            in csv format
-        :param askConfirmation: <boolean> asking for confirmation before
-            deleting existing tables
+
+        Args:
+            fn_source (str): path to zip file with eutl data. If none, data will be
+                downloaded from euets.info for the most recent year of the database.
+            askConfirmation (bool, optional): True to ask for confirmation. Defaults to True.
         """
+        delete_input = False
+        if fn_source is None:
+            print("No source file provided. Download data from euets.info")
+            delete_input = True
+            fn_source = download_data()
+
+        # empty the database
         self.empty_database(askConfirmation=askConfirmation)
         with ZipFile(fn_source, "r") as fzip:
             # insert basic tables
@@ -404,4 +455,8 @@ class DataAccessLayer:
             self.insert_df_large(
                 df, "transaction", integerColumns=int_cols, if_exists="append"
             )
+
+        # delete the downloaded source file
+        if delete_input:
+            os.remove(fn_source)
         return
