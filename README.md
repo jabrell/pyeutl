@@ -20,12 +20,16 @@ Documentation is currently provided in a series of jupyter notebooks.
 
 ## Object Relational Mapper
 
-1. orm_1_create_database.ipynb shows how to create the database provided the zip-file containing data extracted from [EUETS.INFO](https://euets.info).
-2. orm_2_installations.ipynb shows how to analyze compliance and transaction behavior of an installation and associated accounts.
-3. orm_3_registry.ipynb shows how to analyze the data on the registry level.
+1. orm_1_create_database.ipynb shows how to create the database provided the zip-file containing data extracted from [EUETS.INFO](https://euets.info): [Setting up the database](https://nbviewer.org/github/jabrell/pyeutl/blob/dev202405/orm_1_create_database.ipynb)
+
+2. orm_2_installations.ipynb shows how to analyze compliance and transaction behavior of an installation and associated accounts: [Analyzing installations](https://nbviewer.org/github/jabrell/pyeutl/blob/dev202405/orm_2_Installations.ipynb)
+3. orm_3_registry.ipynb shows how to analyze the data on the registry level: [Analyzing countries](https://nbviewer.org/github/jabrell/pyeutl/blob/dev202405/orm_3_Registry.ipynb)
 
 ## Ziploader
-1. zip_1_load_data.ipynb shows how to load installation, account, and transaction data.
+1. zip_1_load_data.ipynb shows how to load installation, account, and transaction data: [Using the ziploader](https://nbviewer.org/github/jabrell/pyeutl/blob/dev202405/zip_1_load_data.ipynb)
 
 # Versions
 To access the 2022 version of the data please you have to use [v2022 version](https://github.com/jabrell/pyeutl/releases/tag/v2022)
+
+# SQL-Based Interface
+[![nbviewer](Setting up the database)](https://nbviewer.org/github/jabrell/pyeutl/blob/dev202405/orm_2_Installations.ipynb)
