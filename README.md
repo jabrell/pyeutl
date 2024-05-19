@@ -30,6 +30,3 @@ Documentation is currently provided in a series of jupyter notebooks.
 
 # Versions
 To access the 2022 version of the data please you have to use [v2022 version](https://github.com/jabrell/pyeutl/releases/tag/v2022)
-
-# SQL-Based Interface
-[![nbviewer](Setting up the database)](https://nbviewer.org/github/jabrell/pyeutl/blob/dev202405/orm_2_Installations.ipynb)
