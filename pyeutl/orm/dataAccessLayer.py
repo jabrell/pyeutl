@@ -1,16 +1,15 @@
 import os
 import csv
-import logging
 from typing import Any
 from zipfile import ZipFile
 from getpass import getpass
 from io import StringIO
+import psycopg2
 import pandas as pd
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.inspection import inspect
 from sqlalchemy import create_engine, MetaData
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy_utils import database_exists, create_database
 from pyeutl.utils import download_data
 from .model import (
     Base,
@@ -65,6 +64,8 @@ class DataAccessLayer:
         self.user = user
         self.host = host
         self.db = db
+        self.passw = passw
+        self.port = port
         if (
             base is None
         ):  # no custom declarative base, so use the one provided by eutl orm
@@ -87,17 +88,44 @@ class DataAccessLayer:
     def connect(self):
         """Connects to database"""
         if self.engine is None:
-            self.engine = create_engine(
-                self.conn_string, echo=self.echo, client_encoding=self.encoding
-            )
-            if not database_exists(self.engine.url):
-                create_database(self.engine.url)
-                print(f"Created new database '{self.db}'")
-            self.Base.metadata.create_all(self.engine)
+#             if not database_exists(self.engine.url):
+#                 create_database(self.engine.url)
+#                 print(f"Created new database '{self.db}'")
+            try:
+                self.engine = create_engine(
+                    self.conn_string, echo=self.echo, client_encoding=self.encoding
+                )   
+                self.Base.metadata.create_all(self.engine) 
+            except UnicodeDecodeError:
+                print("here")
+                self._create_database_if_not_exists()
+                self.engine = create_engine(
+                    self.conn_string, echo=self.echo, client_encoding=self.encoding
+                )            
+                self.Base.metadata.create_all(self.engine)
             self.metadata = MetaData()
             self.Session = sessionmaker(bind=self.engine)
             # self.session = self.Session()
 
+    def _create_database_if_not_exists(self):
+        """Creates database if it does not exist"""
+        pg_connection_dict = {
+            "host": self.host,
+            "user": self.user,
+            "password": self.passw,
+            "port": self.port,
+        }
+        conn = psycopg2.connect(**pg_connection_dict)
+        cur = conn.cursor()
+        conn.autocommit = True
+        cur.execute(f"SELECT 1 FROM pg_catalog.pg_database WHERE datname = '{self.db}'")
+        exists = cur.fetchone()
+        if not exists:
+            cur.execute(f"CREATE DATABASE {self.db}")
+            print(f"Created new database '{self.db}'")
+        cur.close()
+        conn.close()
+        
     def empty_database(self, askConfirmation: bool = True):
         """Deletes all tables from database connected by engine
 
