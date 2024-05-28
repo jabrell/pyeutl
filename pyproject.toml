@@ -1,20 +1,20 @@
 [tool.poetry]
 name = "pyeutl"
 version = "0.1.0"
-description = ""
+description = "Access data on the European Union Emission Trading systsen (EU ETS) based on the data provided by euets.info."
 authors = ["Jan Abrell <abrell@posteo.de>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.12"
-pandas = "^2.2.2"
+python = ">=3.11"
+pandas = ">=2.0"
 matplotlib = "^3.9.0"
-sqlalchemy = "^2.0.30"
-psycopg2-binary = "^2.9.9"
-openpyxl = "^3.1.2"
-jupyter = "^1.0.0"
-notebook = "^7.2.0"
-
+sqlalchemy = ">=2.0"
+psycopg2-binary = ">=2.9"
+openpyxl = "*"
+jupyter = "*"
+notebook = "*"
+ipykernel = "*"
 
 [tool.poetry.group.dev.dependencies]
 ipykernel = "^6.29.4"
