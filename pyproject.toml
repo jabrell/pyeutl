@@ -18,6 +18,10 @@ ipykernel = "*"
 
 [tool.poetry.group.dev.dependencies]
 ipykernel = "^6.29.4"
+black = "^24.4.2"
+nbsphinx = "^0.9.4"
+sphinx-rtd-theme = "^2.0.0"
+sphinx-math-dollar = "^1.2.1"
 
 [build-system]
 requires = ["poetry-core"]
