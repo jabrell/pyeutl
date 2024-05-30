@@ -12,8 +12,12 @@ This package is currently under development and backward compatibility is theref
 
 # Installation 
 
-Clone the repository and follow the steps given the in the different notebooks. 
-Dependencies are managed using poetry.
+Dependencies are managed using poetry. So the most easy way to install *pyeutl* is to use
+pip in your python environment. The minimum python version has to 3.11.
+
+```
+pip install git+https://github.com/jabrell/pyeutl.git
+```
 
 # Get started
 Documentation is currently provided in a series of jupyter notebooks.
