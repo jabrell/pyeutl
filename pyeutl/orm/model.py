@@ -134,7 +134,7 @@ class Account(Base):
     id = Column(Integer(), primary_key=True)
     tradingSystem_id = Column(String(20), ForeignKey("trading_system_code.id"))
     accountIDEutl = Column(Integer)
-    accountIDtransactions = Column(String(100))
+    accountIDTransactions = Column(String(100))
     accountIDESD = Column(String(50))
     yearValid = Column(Integer())
     name = Column(String(250))
