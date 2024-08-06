@@ -292,6 +292,14 @@ class Installation(Base):
     surrendering = relationship("Surrender", backref="installation")
     nace = relationship("NaceCode", backref="installations")
     # accounts ==> all operator accounts related to installations
+    # for shipping companies
+    # todo add country relation
+    isMaritimeOperator = Column(Boolean())
+    shippingCompanyCountry = Column(String(10))
+    shippingCompanyType = Column(String(100))
+    shippingCompany = Column(String(100))
+    imoID = Column(String(50))
+    region = Column(String(50))
 
     @property
     def activity(self):
