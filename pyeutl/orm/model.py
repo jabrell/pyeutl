@@ -299,7 +299,7 @@ class Installation(Base):
     shippingCompanyType = Column(String(100))
     shippingCompany = Column(String(100))
     imoID = Column(String(50))
-    region = Column(String(50))
+    region = Column(String(150))
 
     @property
     def activity(self):

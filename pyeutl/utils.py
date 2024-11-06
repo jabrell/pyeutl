@@ -4,7 +4,8 @@ import requests
 MOST_RECENT_YEAR = 2024
 
 URLS = {
-    MOST_RECENT_YEAR: "https://euets-info-public.s3.eu-central-1.amazonaws.com/eutl_2024.zip",
+    MOST_RECENT_YEAR: "https://euets-info-public.s3.eu-central-1.amazonaws.com/eutl_2024_202410.zip",
+    20245: "https://euets-info-public.s3.eu-central-1.amazonaws.com/eutl_2024_202405.zip",
     2023: "https://euets-info-public.s3.eu-central-1.amazonaws.com/eutl_2023.zip",
     2022: "https://euets-info-public.s3.eu-central-1.amazonaws.com/eutl_2022.zip",
     2021: "https://euets-info-public.s3.eu-central-1.amazonaws.com/eutl_2021.zip",
